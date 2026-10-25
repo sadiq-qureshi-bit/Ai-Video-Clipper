@@ -1,4 +1,4 @@
-name: Build ClipForge APK
+name: Build ClipForge APK v2
 
 on:
   workflow_dispatch:
