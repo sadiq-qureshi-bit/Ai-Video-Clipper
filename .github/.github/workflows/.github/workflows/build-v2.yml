@@ -1,0 +1,50 @@
+name: Build ClipForge APK v2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK platform 36
+        run: |
+          SDKM="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+          echo "Using $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Unzip project
+        run: |
+          ZIP="$(ls *.zip | head -n 1)"
+          echo "Using $ZIP"
+          unzip -o "$ZIP" -d extracted
+
+      - name: Build debug APK
+        run: |
+          PROJECT_DIR="$(dirname "$(find extracted -name settings.gradle.kts -print -quit)")"
+          cd "$PROJECT_DIR"
+          gradle --no-daemon :app:assembleDebug
+          mkdir -p "$GITHUB_WORKSPACE/output"
+          cp app/build/outputs/apk/debug/*.apk "$GITHUB_WORKSPACE/output/"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipForge-debug-APK
+          path: output/*.apk
+          if-no-files-found: error
